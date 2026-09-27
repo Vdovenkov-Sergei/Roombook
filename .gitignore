@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.Python
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Test / type / lint caches
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Env files
+.env
+*.env
+!*.env.example
+
+# OS / editor
+.DS_Store
+*.pem
+.idea/
+.vscode/
+
+# Claude Code
+.claude/
