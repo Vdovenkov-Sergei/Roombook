@@ -2,7 +2,10 @@
 
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 def build_error_body(error_type: str, message: str, details: list[dict[str, str]]) -> dict[str, Any]:
@@ -20,12 +23,29 @@ def build_error_body(error_type: str, message: str, details: list[dict[str, str]
     raise NotImplementedError
 
 
-def register_exception_handlers(app: FastAPI) -> None:
-    """Register the unified handlers on a FastAPI application.
+async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Convert a request-validation failure into the unified error envelope.
 
     Args:
-        app: The application to attach the handlers to.
+        request: The incoming request.
+        exc: The validation error FastAPI caught.
+
+    Returns:
+        A 422 response shaped like the envelope in README.md.
     """
-    # TODO(12): Register a RequestValidationError handler that returns 422 via `build_error_body`.
-    # TODO(13): Register a StarletteHTTPException handler that returns the same envelope shape.
+    # TODO(12): Build details and return the envelope.
+    raise NotImplementedError
+
+
+async def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Convert an HTTPException into the unified error envelope.
+
+    Args:
+        request: The incoming request.
+        exc: The HTTP exception FastAPI caught.
+
+    Returns:
+        A response with the same status code, shaped like the envelope in README.md.
+    """
+    # TODO(13): Return the envelope using information from exception.
     raise NotImplementedError

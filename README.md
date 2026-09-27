@@ -51,16 +51,16 @@ Implement every `# TODO` in `app/models.py`, `app/errors.py`, and `app/main.py`.
 ### `app/errors.py`
 
 6. `build_error_body` — return the envelope shown below.
-7. `register_exception_handlers` — map `RequestValidationError` and
-   `HTTPException` onto that envelope.
+7. `handle_validation_error` — map `RequestValidationError` onto that envelope, with HTTP `422`.
+8. `handle_http_exception` — map any `HTTPException` onto the same envelope, keeping its status code.
 
 ### `app/main.py`
 
-8. Register your exception handlers.
-9. `POST /api/bookings/` — create a booking; return it with HTTP `201`.
-10. `GET /api/bookings/{booking_id}` — return a booking or raise `404`.
-11. `PATCH /api/bookings/{booking_id}` — apply a partial update or raise `404`.
-12. `GET /api/bookings/` — list with `limit`, `offset`, `start_from`,
+9. Register your exception handlers.
+10. `POST /api/bookings/` — create a booking; return it with HTTP `201`.
+11. `GET /api/bookings/{booking_id}` — return a booking or raise `404`.
+12. `PATCH /api/bookings/{booking_id}` — apply a partial update or raise `404`.
+13. `GET /api/bookings/` — list with `limit`, `offset`, `start_from`,
     `start_to`.
 
 ## Target contract
