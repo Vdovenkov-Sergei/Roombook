@@ -13,7 +13,7 @@ app = FastAPI(
     summary="A meeting-room booking API.",
 )
 
-# TODO(14): Register your exception handlers
+# TODO(14): Register your exception handlers. Flag mypy errors with `# type: ignore` if needed.
 
 
 @app.get("/health", tags=["system"])

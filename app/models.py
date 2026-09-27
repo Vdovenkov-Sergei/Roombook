@@ -19,9 +19,9 @@ class BookingBase(BaseModel):
     # TODO(3): Declare title, email, phone, start_time, end_time, notes (optional).
     # TODO(3): Needs `EmailStr`, `Field` from pydantic.
 
-    # TODO(4): title validator -- trim; reject empty/whitespace-only; reject reserved chars.
+    # TODO(4): title validator -- trim; reject empty/whitespace-only; reject reserved chars; max length TITLE_MAX_LENGTH.
     # TODO(4): phone validator -- must match the E.164 pattern.
-    # TODO(4): notes validator -- trim; reject reserved chars; empty becomes None.
+    # TODO(4): notes validator -- trim; reject reserved chars; empty becomes None; max length NOTES_MAX_LENGTH.
     # TODO(4): Needs `field_validator` from pydantic. Raise ValueError as "Field '<name>' <reason>."
 
     # TODO(5): model_validator(mode="after") -- reject a past start_time; require end_time >= start_time + MIN_BOOKING_MINUTES.
@@ -40,6 +40,7 @@ class BookingUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # TODO(7): Optional versions of every editable field; reuse the validators.
+    # TODO(7): Same length limits on title/notes as BookingBase.
     # TODO(7): Check the time window only when both times are present.
 
 

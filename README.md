@@ -37,9 +37,9 @@ Implement every `# TODO` in `app/models.py`, `app/errors.py`, and `app/main.py`.
 
 1. Define the `E.164` phone regex and the set of rejected characters.
 2. `BookingBase` — declare the shared fields, then add:
-   - a `title` validator: trim, reject empty or reserved-character titles.
+   - a `title` validator: trim, reject empty or reserved-character titles, limit the max length.
    - a `phone` validator: enforce E.164 format.
-   - a `notes` validator: trim, reject reserved characters.
+   - a `notes` validator: trim, reject reserved characters, limit the max length.
    - a `model_validator(mode="after")`: reject a past `start_time`; require
      `end_time` at least 15 minutes after `start_time`.
 3. `BookingCreateRequest` — add the sensitive `internal_code` field.

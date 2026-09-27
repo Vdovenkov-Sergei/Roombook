@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from app.constants import MAX_LIMIT, MIN_LIMIT, PRICE_PER_HOUR
+from app.constants import MAX_LIMIT, MIN_LIMIT, PRICE_PER_HOUR, TITLE_MAX_LENGTH
 
 # The exact set of fields a booking response must have.
 BOOKING_RESPONSE_FIELDS = {
@@ -72,6 +72,7 @@ class TestCreateBooking:
             pytest.param({"title": ""}, None, id="title_empty"),
             pytest.param({"phone": "not-a-phone"}, None, id="phone_garbage"),
             pytest.param({"notes": "hack; rm -rf $HOME"}, None, id="notes_reserved_chars"),
+            pytest.param({"title": "x" * (TITLE_MAX_LENGTH + 1)}, None, id="title_too_long"),
             pytest.param({}, "internal_code", id="internal_code_missing"),
             pytest.param({"surprise": "not allowed"}, None, id="extra_field_forbidden"),
         ],
@@ -83,7 +84,7 @@ class TestCreateBooking:
         overrides: dict[str, Any],
         missing_field: str | None,
     ) -> None:
-        """One representative case per rule."""
+        """One representative case per rule, the exact envelope shape is checked here too."""
         payload = {**valid_create_json, **overrides}
         if missing_field is not None:
             del payload[missing_field]
@@ -91,6 +92,7 @@ class TestCreateBooking:
         assert response.status_code == 422
         envelope = response.json()
         assert envelope["error"]["type"] == "validation_error"
+        assert envelope["error"]["message"] == "One or more fields are invalid."
         assert envelope["error"]["details"]
 
     def test_rejects_end_before_start(self, client: TestClient, valid_create_json: dict[str, Any]) -> None:

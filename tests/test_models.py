@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from app.constants import MIN_BOOKING_MINUTES, PRICE_PER_HOUR
+from app.constants import MIN_BOOKING_MINUTES, NOTES_MAX_LENGTH, PRICE_PER_HOUR, TITLE_MAX_LENGTH
 
 
 class TestBookingCreateRequest:
@@ -37,6 +37,8 @@ class TestBookingCreateRequest:
             pytest.param("phone", "+123456", id="phone_too_short"),
             pytest.param("phone", "+1234567890123456", id="phone_too_long"),
             pytest.param("notes", "hack; rm -rf $HOME", id="notes_reserved_chars"),
+            pytest.param("title", "x" * (TITLE_MAX_LENGTH + 1), id="title_too_long"),
+            pytest.param("notes", "x" * (NOTES_MAX_LENGTH + 1), id="notes_too_long"),
             pytest.param("surprise", "not allowed", id="extra_field_forbidden"),
         ],
     )
@@ -119,6 +121,19 @@ class TestBookingCreateRequest:
         booking = models.BookingCreateRequest(**kwargs)
         assert booking.notes is None
 
+    def test_accepts_title_at_max_length(self, models: ModuleType, valid_create: dict[str, Any]) -> None:
+        """A title of exactly TITLE_MAX_LENGTH characters is the accepted boundary."""
+        kwargs = {**valid_create, "title": "x" * TITLE_MAX_LENGTH}
+        booking = models.BookingCreateRequest(**kwargs)
+        assert len(booking.title) == TITLE_MAX_LENGTH
+
+    def test_accepts_notes_at_max_length(self, models: ModuleType, valid_create: dict[str, Any]) -> None:
+        """Notes of exactly NOTES_MAX_LENGTH characters are the accepted boundary."""
+        kwargs = {**valid_create, "notes": "x" * NOTES_MAX_LENGTH}
+        booking = models.BookingCreateRequest(**kwargs)
+        assert booking.notes is not None
+        assert len(booking.notes) == NOTES_MAX_LENGTH
+
 
 class TestBookingUpdateRequest:
     """Tests for the booking partial-update request model."""
@@ -156,6 +171,8 @@ class TestBookingUpdateRequest:
             pytest.param("phone", "+123456", id="phone_too_short"),
             pytest.param("phone", "+1234567890123456", id="phone_too_long"),
             pytest.param("notes", "rm -rf $HOME", id="notes_reserved_chars"),
+            pytest.param("title", "x" * (TITLE_MAX_LENGTH + 1), id="title_too_long"),
+            pytest.param("notes", "x" * (NOTES_MAX_LENGTH + 1), id="notes_too_long"),
             pytest.param("surprise", "not allowed", id="extra_field_forbidden"),
         ],
     )
@@ -231,6 +248,20 @@ class TestBookingUpdateRequest:
         kwargs = {**valid_update, "notes": notes}
         update = models.BookingUpdateRequest(**kwargs)
         assert update.notes is None
+
+    def test_accepts_title_at_max_length(self, models: ModuleType, valid_update: dict[str, Any]) -> None:
+        """A title of exactly TITLE_MAX_LENGTH characters is the accepted boundary."""
+        kwargs = {**valid_update, "title": "x" * TITLE_MAX_LENGTH}
+        update = models.BookingUpdateRequest(**kwargs)
+        assert update.title is not None
+        assert len(update.title) == TITLE_MAX_LENGTH
+
+    def test_accepts_notes_at_max_length(self, models: ModuleType, valid_update: dict[str, Any]) -> None:
+        """Notes of exactly NOTES_MAX_LENGTH characters are the accepted boundary."""
+        kwargs = {**valid_update, "notes": "x" * NOTES_MAX_LENGTH}
+        update = models.BookingUpdateRequest(**kwargs)
+        assert update.notes is not None
+        assert len(update.notes) == NOTES_MAX_LENGTH
 
 
 class TestBookingResponse:

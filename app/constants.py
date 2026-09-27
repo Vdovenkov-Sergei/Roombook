@@ -4,6 +4,8 @@
 
 MIN_BOOKING_MINUTES = 15
 PRICE_PER_HOUR = 25.0
+TITLE_MAX_LENGTH = 200
+NOTES_MAX_LENGTH = 2000
 
 # --- Pagination --------------------------------------------------------------
 
