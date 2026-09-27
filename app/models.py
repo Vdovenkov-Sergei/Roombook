@@ -12,7 +12,7 @@ RESERVED_CHARS: set[str] = set()
 
 
 class BookingBase(BaseModel):
-    """Fields and validation shared by inbound booking representations."""
+    """Model for fields shared by every booking payload."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -29,13 +29,13 @@ class BookingBase(BaseModel):
 
 
 class BookingCreateRequest(BookingBase):
-    """Payload for ``POST /api/bookings/``."""
+    """Model for creating a booking."""
 
     # TODO(6): Add the sensitive `internal_code` field. Needs `Field` from pydantic.
 
 
 class BookingUpdateRequest(BaseModel):
-    """Partial-update payload with every field optional."""
+    """Model for editing a booking."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -44,7 +44,7 @@ class BookingUpdateRequest(BaseModel):
 
 
 class BookingResponse(BaseModel):
-    """Representation returned to clients."""
+    """Model for the booking response."""
 
     # TODO(8): Same fields as BookingBase, plus 'id' and 'created_at'.
 
