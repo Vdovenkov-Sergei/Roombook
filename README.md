@@ -1,12 +1,12 @@
 # Roombook
 
 A contract-driven meeting-room booking API. You implement it with `FastAPI` and
-`Pydantic`, following an explicit request/response contract. Storage is an _in-memory_
-— no database required.
+`Pydantic`, following an explicit request/response contract. Storage is
+_in-memory_ — no database required.
 
 ## Requirements
 
-- Programming language interpreter — [Python 3.14](https://www.python.org/downloads/release/python-3147/)
+- Programming language interpreter — [Python 3.14](https://www.python.org/downloads/)
 - Fast Python package and project manager — [uv](https://docs.astral.sh/uv/)
 - Build automation and task runner — [GNU Make](https://www.gnu.org/software/make/)
 
@@ -57,9 +57,10 @@ Implement every `# TODO` in `app/models.py`, `app/errors.py`, and `app/main.py`.
 ### `app/main.py`
 
 8. Register your exception handlers.
-9. `POST /api/v1/bookings/` — create a booking; return it with HTTP `201`.
-10. `GET /api/v1/bookings/{booking_id}` — return a booking or raise `404`.
-11. `GET /api/v1/bookings/` — list with `limit`, `offset`, `start_from`,
+9. `POST /api/bookings/` — create a booking; return it with HTTP `201`.
+10. `GET /api/bookings/{booking_id}` — return a booking or raise `404`.
+11. `PATCH /api/bookings/{booking_id}` — apply a partial update or raise `404`.
+12. `GET /api/bookings/` — list with `limit`, `offset`, `start_from`,
     `start_to`.
 
 ## Target contract
@@ -70,10 +71,13 @@ includes the computed fields:
 ```json
 {
   "id": "a1b2c3d4-...",
-  "title": "Sprint Retro",
+  "title": "title",
+  "email": "email@example.com",
   "phone": "********2671",
-  "start_time": "2099-01-01T09:00:00Z",
-  "end_time": "2099-01-01T10:00:00Z",
+  "start_time": "2099-01-02T09:00:00Z",
+  "end_time": "2099-01-02T10:00:00Z",
+  "notes": "text",
+  "created_at": "2099-01-01T12:00:00Z",
   "duration": 60,
   "price": 25.0
 }
@@ -99,6 +103,7 @@ Every failure uses one envelope:
 | --- | --- | --- |
 | `POST` | `/api/bookings/` | Create a booking. Returns `201`. |
 | `GET` | `/api/bookings/{booking_id}` | Fetch a booking. Returns `404` if absent. |
+| `PATCH` | `/api/bookings/{booking_id}` | Partially update a booking. Returns `404` if absent. |
 | `GET` | `/api/bookings/` | List bookings. Supports `limit`, `offset`, `start_from`, `start_to`. |
 | `GET` | `/health` | Report service liveness. |
 

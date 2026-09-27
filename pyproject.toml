@@ -1,7 +1,7 @@
 [project]
 name = "roombook"
 version = "1.0.0"
-description = "Roombook: meeting-room booking API built with FastAPI and Pydantic."
+description = "Roombook: meeting-room booking API."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
