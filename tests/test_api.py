@@ -222,11 +222,28 @@ class TestUpdateBooking:
         assert response.status_code == 404
         assert response.json()["error"]["type"] == "http_error"
 
-    def test_rejects_invalid_field(self, client: TestClient, valid_create_json: dict[str, Any]) -> None:
-        """A changed field still goes through the same validation as on creation."""
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            pytest.param({"title": ""}, id="title_empty"),
+            pytest.param({"phone": "not-a-phone"}, id="phone_garbage"),
+            pytest.param({"notes": "hack; rm -rf $HOME"}, id="notes_reserved_chars"),
+            pytest.param({"title": "x" * (TITLE_MAX_LENGTH + 1)}, id="title_too_long"),
+            pytest.param({"start_time": "2099-01-01T10:00:00"}, id="start_time_naive"),
+            pytest.param({"surprise": "not allowed"}, id="extra_field_forbidden"),
+        ],
+    )
+    def test_rejects_invalid_payload(
+        self, client: TestClient, valid_create_json: dict[str, Any], overrides: dict[str, Any]
+    ) -> None:
+        """A changed field still goes through the same validation as on creation, envelope shape checked too."""
         created = client.post("/api/bookings/", json=valid_create_json).json()
-        response = client.patch(f"/api/bookings/{created['id']}", json={"phone": "not-a-phone"})
+        response = client.patch(f"/api/bookings/{created['id']}", json=overrides)
         assert response.status_code == 422
+        envelope = response.json()
+        assert envelope["error"]["type"] == "validation_error"
+        assert envelope["error"]["message"] == "One or more fields are invalid."
+        assert envelope["error"]["details"]
 
     def test_rejects_moving_into_a_conflict(self, client: TestClient, valid_create_json: dict[str, Any]) -> None:
         """Moving a booking onto another booking's time is a 409."""

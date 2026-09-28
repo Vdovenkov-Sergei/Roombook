@@ -99,12 +99,6 @@ def valid_update() -> dict[str, Any]:
 
 
 @pytest.fixture()
-def valid_update_json(valid_update: dict[str, Any]) -> dict[str, Any]:
-    """A JSON correct, fully populated set of ``BookingUpdateRequest`` constructor kwargs."""
-    return as_json_payload(valid_update)
-
-
-@pytest.fixture()
 def valid_response() -> dict[str, Any]:
     """A correct, complete set of ``BookingResponse`` constructor kwargs."""
     start = datetime.now(UTC)
