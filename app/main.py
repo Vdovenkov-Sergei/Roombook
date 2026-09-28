@@ -1,17 +1,12 @@
 """FastAPI application for Roombook."""
 
-from datetime import datetime
-
 from fastapi import FastAPI, Query
+from pydantic import AwareDatetime
 
 from .constants import DEFAULT_LIMIT, DEFAULT_OFFSET, MAX_LIMIT, MIN_LIMIT, MIN_OFFSET
 from .models import BookingCreateRequest, BookingResponse, BookingUpdateRequest
 
-app = FastAPI(
-    title="Roombook",
-    version="1.0.0",
-    summary="A meeting-room booking API.",
-)
+app = FastAPI(title="Roombook", version="1.0.0", summary="A meeting-room booking API.")
 
 # TODO(14): Register your exception handlers. Flag mypy errors with `# type: ignore` if needed.
 
@@ -35,8 +30,12 @@ def create_booking(payload: BookingCreateRequest) -> BookingResponse:
 
     Returns:
         The created booking.
+
+    Raises:
+        HTTPException: If the booking's time overlaps an existing booking.
     """
     # TODO(15): Store and return the created booking with the correct HTTP status code.
+    # TODO(15): A time conflict reported by the repository must become '409 Conflict'.
     raise NotImplementedError
 
 
@@ -53,7 +52,7 @@ def get_booking(booking_id: str) -> BookingResponse:
     Raises:
         HTTPException: If no booking has the given id.
     """
-    # TODO(16): Return the booking, or raise exception if it is absent.
+    # TODO(16): Return the booking, or raise exception '404 Not Found' if it is absent.
     raise NotImplementedError
 
 
@@ -69,9 +68,12 @@ def update_booking(booking_id: str, payload: BookingUpdateRequest) -> BookingRes
         The updated booking.
 
     Raises:
-        HTTPException: If no booking has the given id.
+        HTTPException: If no booking has the given id, or the new time overlaps another booking.
+        RequestValidationError: If the new window is shorter than the minimum duration.
     """
-    # TODO(17): Update the booking with only the fields the client actually set, or raise exception if it is absent.
+    # TODO(17): Update the booking with only the fields the client actually set, or raise '404 Not Found' if it is absent.
+    # TODO(17): A time conflict reported by the repository must become '409 Conflict'.
+    # TODO(17): A too-short window reported by the repository must become the same '422 Unprocessable Entity' envelope.
     raise NotImplementedError
 
 
@@ -79,8 +81,8 @@ def update_booking(booking_id: str, payload: BookingUpdateRequest) -> BookingRes
 def list_bookings(
     limit: int = Query(default=DEFAULT_LIMIT, ge=MIN_LIMIT, le=MAX_LIMIT),
     offset: int = Query(default=DEFAULT_OFFSET, ge=MIN_OFFSET),
-    start_from: datetime | None = Query(default=None),
-    start_to: datetime | None = Query(default=None),
+    start_from: AwareDatetime | None = Query(default=None),
+    start_to: AwareDatetime | None = Query(default=None),
 ) -> list[BookingResponse]:
     """List bookings with pagination and an optional start-time range filter.
 

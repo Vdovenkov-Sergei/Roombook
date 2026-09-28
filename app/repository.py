@@ -2,8 +2,18 @@
 
 import threading
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
+
+from .constants import MIN_BOOKING_MINUTES
+
+
+class BookingConflictError(Exception):
+    """Raised when a booking's time window overlaps an existing booking."""
+
+
+class InvalidBookingWindowError(Exception):
+    """Raised when an update leaves a booking shorter than the minimum duration."""
 
 
 class BookingRepository:
@@ -24,6 +34,36 @@ class BookingRepository:
         with self._lock:
             self._items.clear()
 
+    @staticmethod
+    def _check_window(candidate: dict[str, Any]) -> None:
+        """Raise if the candidate ends less than the minimum duration after it starts.
+
+        Args:
+            candidate: The booking about to be stored.
+
+        Raises:
+            InvalidBookingWindowError: If the window is shorter than MIN_BOOKING_MINUTES.
+        """
+        if candidate["end_time"] - candidate["start_time"] < timedelta(minutes=MIN_BOOKING_MINUTES):
+            raise InvalidBookingWindowError(
+                f"Field 'end_time' must be at least {MIN_BOOKING_MINUTES} minutes after 'start_time'."
+            )
+
+    def _check_overlap(self, candidate: dict[str, Any]) -> None:
+        """Raise if the candidate's time window overlaps another booking.
+
+        Args:
+            candidate: The booking about to be stored.
+
+        Raises:
+            BookingConflictError: If another booking overlaps the candidate.
+        """
+        for booking_id, other in self._items.items():
+            if booking_id == candidate["id"]:
+                continue
+            if candidate["start_time"] < other["end_time"] and other["start_time"] < candidate["end_time"]:
+                raise BookingConflictError(f"Time window overlaps booking '{booking_id}'.")
+
     def add(self, entity: dict[str, Any]) -> dict[str, Any]:
         """Store a new booking entity and assign server-owned fields.
 
@@ -32,10 +72,14 @@ class BookingRepository:
 
         Returns:
             The stored entity.
+
+        Raises:
+            BookingConflictError: If the booking overlaps an existing one.
         """
         booking_id = str(uuid.uuid4())
         record = {**entity, "id": booking_id, "created_at": datetime.now(UTC)}
         with self._lock:
+            self._check_overlap(record)
             self._items[booking_id] = record
         return record
 
@@ -48,12 +92,18 @@ class BookingRepository:
 
         Returns:
             The updated entity, or ``None`` if no booking has that id.
+
+        Raises:
+            InvalidBookingWindowError: If the updated booking is too short.
+            BookingConflictError: If the updated booking overlaps another one.
         """
         with self._lock:
             existing = self._items.get(booking_id)
             if existing is None:
                 return None
             updated = {**existing, **changes}
+            self._check_window(updated)
+            self._check_overlap(updated)
             self._items[booking_id] = updated
             return updated
 

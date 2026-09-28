@@ -16,22 +16,23 @@ class BookingBase(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # TODO(3): Declare title, email, phone, start_time, end_time, notes (optional).
-    # TODO(3): Needs `EmailStr`, `Field` from pydantic.
+    # TODO(3): Declare `title`, `email`, `phone`, `start_time`, `end_time`, `notes` (optional).
+    # TODO(3): Needs `EmailStr`, `Field`, `AwareDatetime` from pydantic.
 
-    # TODO(4): title validator -- trim; reject empty/whitespace-only; reject reserved chars; max length TITLE_MAX_LENGTH.
-    # TODO(4): phone validator -- must match the E.164 pattern.
-    # TODO(4): notes validator -- trim; reject reserved chars; empty becomes None; max length NOTES_MAX_LENGTH.
+    # TODO(4): `title` validator -- trim; reject empty/whitespace-only; reject reserved chars; max length TITLE_MAX_LENGTH.
+    # TODO(4): `phone` validator -- must match the E.164 pattern.
+    # TODO(4): `notes` validator -- trim; reject reserved chars; empty becomes None; max length NOTES_MAX_LENGTH.
     # TODO(4): Needs `field_validator` from pydantic. Raise ValueError as "Field '<name>' <reason>."
 
-    # TODO(5): model_validator(mode="after") -- reject a past start_time; require end_time >= start_time + MIN_BOOKING_MINUTES.
+    # TODO(5): Reject a past `start_time`; require `end_time` >= `start_time` + MIN_BOOKING_MINUTES.
     # TODO(5): Needs `model_validator` from pydantic.
 
 
 class BookingCreateRequest(BookingBase):
     """Model for creating a booking."""
 
-    # TODO(6): Add the sensitive `internal_code` field. Needs `Field` from pydantic.
+    # TODO(6): Add the sensitive `internal_code` field.
+    # TODO(6): Needs `Field` from pydantic.
 
 
 class BookingUpdateRequest(BaseModel):
@@ -40,15 +41,18 @@ class BookingUpdateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     # TODO(7): Optional versions of every editable field; reuse the validators.
-    # TODO(7): Same length limits on title/notes as BookingBase.
+    # TODO(7): Same length limits on `title` / `notes` as BookingBase.
+    # TODO(7): Same timezone-aware rule on `start_time` / `end_time`.
     # TODO(7): Check the time window only when both times are present.
 
 
 class BookingResponse(BaseModel):
     """Model for the booking response."""
 
-    # TODO(8): Same fields as BookingBase, plus 'id' and 'created_at'.
+    # TODO(8): Same fields as BookingBase, plus `id` and `created_at`.
 
-    # TODO(9): 'field_serializer' for phone that masks all but the last four digits in JSON output. Needs `field_serializer` from pydantic.
+    # TODO(9): `field_serializer` for phone that masks all but the last four digits in JSON output.
+    # TODO(9): Needs `field_serializer` from pydantic.
 
-    # TODO(10): Computed fields duration (in minutes) and price. Needs `computed_field` from pydantic.
+    # TODO(10): Computed fields `duration` (in minutes) and `price`.
+    # TODO(10): Needs `computed_field` from pydantic.

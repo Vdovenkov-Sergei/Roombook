@@ -39,6 +39,8 @@ class TestBookingCreateRequest:
             pytest.param("notes", "hack; rm -rf $HOME", id="notes_reserved_chars"),
             pytest.param("title", "x" * (TITLE_MAX_LENGTH + 1), id="title_too_long"),
             pytest.param("notes", "x" * (NOTES_MAX_LENGTH + 1), id="notes_too_long"),
+            pytest.param("start_time", "2099-01-01T10:00:00", id="start_time_naive"),
+            pytest.param("end_time", "2099-01-01T11:00:00", id="end_time_naive"),
             pytest.param("surprise", "not allowed", id="extra_field_forbidden"),
         ],
     )
@@ -173,6 +175,8 @@ class TestBookingUpdateRequest:
             pytest.param("notes", "rm -rf $HOME", id="notes_reserved_chars"),
             pytest.param("title", "x" * (TITLE_MAX_LENGTH + 1), id="title_too_long"),
             pytest.param("notes", "x" * (NOTES_MAX_LENGTH + 1), id="notes_too_long"),
+            pytest.param("start_time", "2099-01-01T10:00:00", id="start_time_naive"),
+            pytest.param("end_time", "2099-01-01T11:00:00", id="end_time_naive"),
             pytest.param("surprise", "not allowed", id="extra_field_forbidden"),
         ],
     )

@@ -23,6 +23,19 @@ BOOKING_RESPONSE_FIELDS = {
 }
 
 
+def window(start: datetime, minutes: int) -> dict[str, str]:
+    """Build the start/end time pair of a booking, as JSON strings.
+
+    Args:
+        start: When the booking starts.
+        minutes: How long the booking lasts.
+
+    Returns:
+        A dict with ``start_time`` and ``end_time`` as ISO strings.
+    """
+    return {"start_time": start.isoformat(), "end_time": (start + timedelta(minutes=minutes)).isoformat()}
+
+
 class TestHealth:
     """Tests for the liveness endpoint."""
 
@@ -73,6 +86,7 @@ class TestCreateBooking:
             pytest.param({"phone": "not-a-phone"}, None, id="phone_garbage"),
             pytest.param({"notes": "hack; rm -rf $HOME"}, None, id="notes_reserved_chars"),
             pytest.param({"title": "x" * (TITLE_MAX_LENGTH + 1)}, None, id="title_too_long"),
+            pytest.param({"start_time": "2099-01-01T10:00:00"}, None, id="start_time_naive"),
             pytest.param({}, "internal_code", id="internal_code_missing"),
             pytest.param({"surprise": "not allowed"}, None, id="extra_field_forbidden"),
         ],
@@ -102,6 +116,52 @@ class TestCreateBooking:
         payload = {**valid_create_json, "start_time": start.isoformat(), "end_time": end.isoformat()}
         response = client.post("/api/bookings/", json=payload)
         assert response.status_code == 422
+
+    @pytest.mark.parametrize(
+        ["offset_minutes", "duration_minutes"],
+        [
+            pytest.param(0, 60, id="identicalwindow"),
+            pytest.param(30, 60, id="starts_inside_existing"),
+            pytest.param(-30, 60, id="ends_inside_existing"),
+            pytest.param(-15, 90, id="contains_existing"),
+            pytest.param(15, 30, id="inside_existing"),
+        ],
+    )
+    def test_rejects_overlapping_booking(
+        self,
+        client: TestClient,
+        valid_create_json: dict[str, Any],
+        offset_minutes: int,
+        duration_minutes: int,
+    ) -> None:
+        """Any overlap with an existing booking is a 409 in the unified error envelope."""
+        base = datetime.now(UTC) + timedelta(days=1)
+        existing = {**valid_create_json, **window(base, 60)}
+        assert client.post("/api/bookings/", json=existing).status_code == 201
+
+        overlapping = {**valid_create_json, **window(base + timedelta(minutes=offset_minutes), duration_minutes)}
+        response = client.post("/api/bookings/", json=overlapping)
+
+        assert response.status_code == 409
+        assert response.json()["error"]["type"] == "http_error"
+
+    @pytest.mark.parametrize(
+        "offset_minutes",
+        [60, -30],
+        ids=["starts_when_existing_ends", "ends_when_existing_starts"],
+    )
+    def test_allows_touching_bookings(
+        self, client: TestClient, valid_create_json: dict[str, Any], offset_minutes: int
+    ) -> None:
+        """A booking that starts exactly when another ends is not an overlap."""
+        base = datetime.now(UTC) + timedelta(days=1)
+        existing = {**valid_create_json, **window(base, 60)}
+        assert client.post("/api/bookings/", json=existing).status_code == 201
+
+        touching = {**valid_create_json, **window(base + timedelta(minutes=offset_minutes), 30)}
+        response = client.post("/api/bookings/", json=touching)
+
+        assert response.status_code == 201
 
     @pytest.mark.parametrize(
         ["hours", "expected_duration"],
@@ -167,6 +227,65 @@ class TestUpdateBooking:
         created = client.post("/api/bookings/", json=valid_create_json).json()
         response = client.patch(f"/api/bookings/{created['id']}", json={"phone": "not-a-phone"})
         assert response.status_code == 422
+
+    def test_rejects_moving_into_a_conflict(self, client: TestClient, valid_create_json: dict[str, Any]) -> None:
+        """Moving a booking onto another booking's time is a 409."""
+        base = datetime.now(UTC) + timedelta(days=1)
+        first = {**valid_create_json, **window(base, 60)}
+        assert client.post("/api/bookings/", json=first).status_code == 201
+        second = client.post("/api/bookings/", json={**valid_create_json, **window(base + timedelta(hours=2), 60)})
+
+        response = client.patch(
+            f"/api/bookings/{second.json()['id']}",
+            json=window(base + timedelta(minutes=30), 60),
+        )
+
+        assert response.status_code == 409
+        assert response.json()["error"]["type"] == "http_error"
+
+    def test_allows_shifting_within_ownwindow(self, client: TestClient, valid_create_json: dict[str, Any]) -> None:
+        """A booking never conflicts with itself, so nudging its own time is fine."""
+        base = datetime.now(UTC) + timedelta(days=1)
+        created = client.post("/api/bookings/", json={**valid_create_json, **window(base, 60)}).json()
+
+        response = client.patch(f"/api/bookings/{created['id']}", json=window(base + timedelta(minutes=10), 60))
+
+        assert response.status_code == 200
+
+    @pytest.mark.parametrize(
+        ["field", "offset_minutes"],
+        [
+            pytest.param("end_time", -120, id="end_before_existing_start"),
+            pytest.param("start_time", 120, id="start_after_existing_end"),
+        ],
+    )
+    def test_rejects_change_that_leaveswindow_too_short(
+        self, client: TestClient, valid_create_json: dict[str, Any], field: str, offset_minutes: int
+    ) -> None:
+        """Changing one end of the window alone must still leave a valid window, checked against the stored other end."""
+        base = datetime.now(UTC) + timedelta(days=1)
+        created = client.post("/api/bookings/", json={**valid_create_json, **window(base, 60)}).json()
+
+        response = client.patch(
+            f"/api/bookings/{created['id']}",
+            json={field: (base + timedelta(minutes=offset_minutes)).isoformat()},
+        )
+
+        assert response.status_code == 422
+        assert response.json()["error"]["type"] == "validation_error"
+
+    def test_allows_extending_end_time_alone(self, client: TestClient, valid_create_json: dict[str, Any]) -> None:
+        """Moving just end time later is a valid partial update, and duration follows."""
+        base = datetime.now(UTC) + timedelta(days=1)
+        created = client.post("/api/bookings/", json={**valid_create_json, **window(base, 60)}).json()
+
+        response = client.patch(
+            f"/api/bookings/{created['id']}",
+            json={"end_time": (base + timedelta(hours=2)).isoformat()},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["duration"] == 120
 
     def test_empty_body_changes_nothing(self, client: TestClient, valid_create_json: dict[str, Any]) -> None:
         """An empty PATCH body is valid and changes nothing."""
@@ -291,4 +410,10 @@ class TestListBookings:
     def test_negative_offset_rejected(self, client: TestClient) -> None:
         """Offset can't be negative."""
         response = client.get("/api/bookings/", params={"offset": -1})
+        assert response.status_code == 422
+
+    @pytest.mark.parametrize("param", ["start_from", "start_to"])
+    def test_naive_range_filter_rejected(self, client: TestClient, param: str) -> None:
+        """A range filter without a timezone is a 422, not a crash."""
+        response = client.get("/api/bookings/", params={param: "2099-01-01T10:00:00"})
         assert response.status_code == 422

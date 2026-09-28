@@ -57,9 +57,11 @@ Implement every `# TODO` in `app/models.py`, `app/errors.py`, and `app/main.py`.
 ### `app/main.py`
 
 9. Register your exception handlers.
-10. `POST /api/bookings/` — create a booking; return it with HTTP `201`.
+10. `POST /api/bookings/` — create a booking; return it with HTTP `201`, or `409` if
+    its time overlaps an existing booking.
 11. `GET /api/bookings/{booking_id}` — return a booking or raise `404`.
-12. `PATCH /api/bookings/{booking_id}` — apply a partial update or raise `404`.
+12. `PATCH /api/bookings/{booking_id}` — apply a partial update; raise `404` if the
+    booking is absent, or`409` if its new time overlaps another booking.
 13. `GET /api/bookings/` — list with `limit`, `offset`, `start_from`,
     `start_to`.
 
@@ -101,9 +103,9 @@ Every failure uses one envelope:
 
 | Method | Path | Action |
 | --- | --- | --- |
-| `POST` | `/api/bookings/` | Create a booking. Returns `201`. |
+| `POST` | `/api/bookings/` | Create a booking. Returns `201`, or `409` on a time overlap. |
 | `GET` | `/api/bookings/{booking_id}` | Fetch a booking. Returns `404` if absent. |
-| `PATCH` | `/api/bookings/{booking_id}` | Partially update a booking. Returns `404` if absent. |
+| `PATCH` | `/api/bookings/{booking_id}` | Partially update a booking. Returns `404` if absent, `409` on a time overlap. |
 | `GET` | `/api/bookings/` | List bookings. Supports `limit`, `offset`, `start_from`, `start_to`. |
 | `GET` | `/health` | Report service liveness. |
 
