@@ -405,7 +405,7 @@ class TestUpdateBooking:
             pytest.param("start_time", 120, id="start_after_existing_end"),
         ],
     )
-    def test_rejects_change_that_leaveswindow_too_short(
+    def test_rejects_change_that_leaves_window_too_short(
         self, client: TestClient, valid_create_json: dict[str, Any], field: str, offset_minutes: int
     ) -> None:
         """Changing one end of the window alone must still leave a valid window, checked against the stored other end."""
