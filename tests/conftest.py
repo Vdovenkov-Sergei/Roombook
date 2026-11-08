@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from types import ModuleType
 from typing import Any
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,8 +12,7 @@ from pydantic_core import to_jsonable_python
 
 from app import main as _main
 from app import models as _models
-from app.repository import BookingRepository
-from app.repository import repository as _repository
+from app.bookings import BookingRepository
 
 
 @pytest.fixture()
@@ -27,25 +27,26 @@ def models() -> ModuleType:
 
 @pytest.fixture()
 def repository() -> BookingRepository:
-    """Give a test the app's repository, reset to empty first.
+    """Give a test a new, empty repository.
 
     Returns:
-        The shared ``BookingRepository`` instance, freshly cleared.
+        A fresh ``BookingRepository`` instance for this test.
     """
-    _repository.clear()
-    return _repository
+    return BookingRepository()
 
 
 @pytest.fixture()
-def client(repository: BookingRepository) -> Iterator[TestClient]:
+def client(repository: BookingRepository, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Give a test an HTTP client wired to the app, with an empty repository.
 
     Args:
-        repository: The cleared repository.
+        repository: The empty repository.
+        monkeypatch: Replaces the app's repository for this test.
 
     Yields:
         A ``TestClient`` bound to the FastAPI app, open for the test's duration.
     """
+    monkeypatch.setattr(_main, "bookings", repository)
     with TestClient(_main.app) as test_client:
         yield test_client
 
@@ -68,6 +69,7 @@ def valid_create() -> dict[str, Any]:
     """A correct, complete set of ``BookingCreateRequest`` constructor kwargs."""
     start = datetime.now(UTC) + timedelta(days=1)
     return {
+        "room_id": UUID("824f2fde-0cfb-4354-83a8-181e7b372aa6"),
         "title": "Test",
         "email": "test@example.com",
         "phone": "+123456789",
@@ -103,7 +105,8 @@ def valid_response() -> dict[str, Any]:
     """A correct, complete set of ``BookingResponse`` constructor kwargs."""
     start = datetime.now(UTC)
     return {
-        "id": "test-id",
+        "id": UUID("20610cb5-7a6b-42e9-a2d8-bb1157802a32"),
+        "room_id": UUID("824f2fde-0cfb-4354-83a8-181e7b372aa6"),
         "title": "Test",
         "email": "test@example.com",
         "phone": "+123456789",

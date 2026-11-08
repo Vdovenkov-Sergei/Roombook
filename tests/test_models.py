@@ -16,6 +16,7 @@ class TestBookingCreateRequest:
     def test_accepts_valid_data(self, models: ModuleType, valid_create: dict[str, Any]) -> None:
         """A fully valid payload constructs successfully with every field intact."""
         booking = models.BookingCreateRequest(**valid_create)
+        assert booking.room_id == valid_create["room_id"]
         assert booking.title == valid_create["title"]
         assert booking.email == valid_create["email"]
         assert booking.phone == valid_create["phone"]
@@ -29,18 +30,18 @@ class TestBookingCreateRequest:
         [
             pytest.param("title", "", id="title_empty"),
             pytest.param("title", "   ", id="title_whitespace_only"),
-            pytest.param("title", "Bad <script>", id="title_reserved_chars"),
             pytest.param("email", "not-an-email", id="email_invalid_format"),
             pytest.param("phone", "5552671", id="phone_missing_plus"),
             pytest.param("phone", "+0123456", id="phone_leading_zero"),
             pytest.param("phone", "not-a-phone", id="phone_garbage"),
+            pytest.param("phone", "+1234567١", id="phone_unicode_digit"),
             pytest.param("phone", "+123456", id="phone_too_short"),
             pytest.param("phone", "+1234567890123456", id="phone_too_long"),
-            pytest.param("notes", "hack; rm -rf $HOME", id="notes_reserved_chars"),
             pytest.param("title", "x" * (TITLE_MAX_LENGTH + 1), id="title_too_long"),
             pytest.param("notes", "x" * (NOTES_MAX_LENGTH + 1), id="notes_too_long"),
             pytest.param("start_time", "2099-01-01T10:00:00", id="start_time_naive"),
             pytest.param("end_time", "2099-01-01T11:00:00", id="end_time_naive"),
+            pytest.param("internal_code", "", id="internal_code_empty"),
             pytest.param("surprise", "not allowed", id="extra_field_forbidden"),
         ],
     )
@@ -52,7 +53,7 @@ class TestBookingCreateRequest:
         with pytest.raises(ValidationError):
             models.BookingCreateRequest(**kwargs)
 
-    @pytest.mark.parametrize("field", ["title", "email", "phone", "start_time", "end_time", "internal_code"])
+    @pytest.mark.parametrize("field", ["room_id", "title", "email", "phone", "start_time", "end_time", "internal_code"])
     def test_requires_field(self, models: ModuleType, valid_create: dict[str, Any], field: str) -> None:
         """Each of these fields is mandatory; omitting it must fail."""
         kwargs = dict(valid_create)
@@ -66,6 +67,7 @@ class TestBookingCreateRequest:
         del kwargs["notes"]
         booking = models.BookingCreateRequest(**kwargs)
         assert booking.notes is None
+        assert booking.room_id == valid_create["room_id"]
         assert booking.title == valid_create["title"]
         assert booking.email == valid_create["email"]
         assert booking.phone == valid_create["phone"]
@@ -136,6 +138,43 @@ class TestBookingCreateRequest:
         assert booking.notes is not None
         assert len(booking.notes) == NOTES_MAX_LENGTH
 
+    def test_trims_text_before_counting_length(self, models: ModuleType, valid_create: dict[str, Any]) -> None:
+        """Whitespace is removed before applying maximum lengths."""
+        model = models.BookingCreateRequest(
+            **{
+                **valid_create,
+                "title": f"  {'x' * TITLE_MAX_LENGTH}  ",
+                "notes": "  Plan  ",
+            }
+        )
+        assert model.title == "x" * TITLE_MAX_LENGTH
+        assert model.notes == "Plan"
+
+    def test_allows_normal_punctuation(self, models: ModuleType, valid_create: dict[str, Any]) -> None:
+        """Benign punctuation is not treated as an injection attack."""
+        model = models.BookingCreateRequest(**{**valid_create, "title": "C++ <3", "notes": "Use $100; see <agenda>."})
+        assert model.title == "C++ <3"
+        assert model.notes == "Use $100; see <agenda>."
+
+    @pytest.mark.parametrize("phone", ["+12345678", "+123456789012345"])
+    def test_accepts_phone_length_boundaries(
+        self, models: ModuleType, valid_create: dict[str, Any], phone: str
+    ) -> None:
+        model = models.BookingCreateRequest(**{**valid_create, "phone": phone})
+        assert model.phone == phone
+
+    @pytest.mark.parametrize("phone", ["+12345678\n", "+12345678x", " +12345678"])
+    def test_rejects_phone_trailing_or_leading_characters(
+        self, models: ModuleType, valid_create: dict[str, Any], phone: str
+    ) -> None:
+        with pytest.raises(ValidationError):
+            models.BookingCreateRequest(**{**valid_create, "phone": phone})
+
+    def test_secret_is_absent_from_repr(self, models: ModuleType, valid_create: dict[str, Any]) -> None:
+        model = models.BookingCreateRequest(**valid_create)
+        assert model.internal_code == valid_create["internal_code"]
+        assert valid_create["internal_code"] not in repr(model)
+
 
 class TestBookingUpdateRequest:
     """Tests for the booking partial-update request model."""
@@ -151,7 +190,7 @@ class TestBookingUpdateRequest:
         assert update.notes == valid_update["notes"]
 
     def test_all_fields_optional(self, models: ModuleType) -> None:
-        """Every field defaults to None, so an empty payload is valid."""
+        """Every field can be omitted; an empty payload contains no changes."""
         update = models.BookingUpdateRequest()
         assert update.title is None
         assert update.email is None
@@ -159,20 +198,20 @@ class TestBookingUpdateRequest:
         assert update.start_time is None
         assert update.end_time is None
         assert update.notes is None
+        assert update.model_dump(exclude_unset=True) == {}
 
     @pytest.mark.parametrize(
         ["field", "value"],
         [
             pytest.param("title", "", id="title_empty"),
             pytest.param("title", "   ", id="title_whitespace_only"),
-            pytest.param("title", "Bad <tag>", id="title_reserved_chars"),
             pytest.param("email", "not-an-email", id="email_invalid_format"),
             pytest.param("phone", "5552671", id="phone_missing_plus"),
             pytest.param("phone", "+0123456", id="phone_leading_zero"),
             pytest.param("phone", "not-a-phone", id="phone_garbage"),
+            pytest.param("phone", "+1234567١", id="phone_unicode_digit"),
             pytest.param("phone", "+123456", id="phone_too_short"),
             pytest.param("phone", "+1234567890123456", id="phone_too_long"),
-            pytest.param("notes", "rm -rf $HOME", id="notes_reserved_chars"),
             pytest.param("title", "x" * (TITLE_MAX_LENGTH + 1), id="title_too_long"),
             pytest.param("notes", "x" * (NOTES_MAX_LENGTH + 1), id="notes_too_long"),
             pytest.param("start_time", "2099-01-01T10:00:00", id="start_time_naive"),
@@ -267,6 +306,22 @@ class TestBookingUpdateRequest:
         assert update.notes is not None
         assert len(update.notes) == NOTES_MAX_LENGTH
 
+    @pytest.mark.parametrize("field", ["title", "email", "phone", "start_time", "end_time"])
+    def test_rejects_explicit_null(self, models: ModuleType, field: str) -> None:
+        """Required stored fields cannot be cleared with null."""
+        with pytest.raises(ValidationError):
+            models.BookingUpdateRequest(**{field: None})
+
+    def test_notes_can_be_cleared(self, models: ModuleType) -> None:
+        """Explicit null clears notes while still appearing in exclude_unset."""
+        model = models.BookingUpdateRequest(notes=None)
+        assert model.model_dump(exclude_unset=True) == {"notes": None}
+
+    def test_start_time_must_be_future_even_when_alone(self, models: ModuleType) -> None:
+        """Changing the start to the past is rejected without an end time."""
+        with pytest.raises(ValidationError):
+            models.BookingUpdateRequest(start_time=datetime.now(UTC) - timedelta(days=1))
+
 
 class TestBookingResponse:
     """Tests for the booking response model."""
@@ -275,6 +330,7 @@ class TestBookingResponse:
         """A fully valid payload constructs successfully with every field intact."""
         response = models.BookingResponse(**valid_response)
         assert response.id == valid_response["id"]
+        assert response.room_id == valid_response["room_id"]
         assert response.title == valid_response["title"]
         assert response.email == valid_response["email"]
         assert response.phone == valid_response["phone"]
@@ -286,17 +342,19 @@ class TestBookingResponse:
         assert response.price == round(PRICE_PER_HOUR, 2)
 
     def test_excludes_internal_code(self, models: ModuleType, valid_response: dict[str, Any]) -> None:
-        """internal_code never appears in the dumped output, even if supplied."""
-        kwargs = {**valid_response, "internal_code": "test-code"}
-        response = models.BookingResponse(**kwargs)
+        """The public model exposes no private field and rejects it if supplied."""
+        response = models.BookingResponse(**valid_response)
         dumped = response.model_dump()
-        assert dumped["id"] == "test-id"
+        assert dumped["id"] == valid_response["id"]
         assert "internal_code" not in dumped
+        with pytest.raises(ValidationError):
+            models.BookingResponse(**{**valid_response, "internal_code": "test-code"})
 
     def test_masks_phone_in_json(self, models: ModuleType, valid_response: dict[str, Any]) -> None:
         """The JSON-serialized phone keeps only its last four digits visible."""
         response = models.BookingResponse(**valid_response)
         assert response.model_dump(mode="json")["phone"] == "******6789"
+        assert response.model_dump(mode="python")["phone"] == valid_response["phone"]
 
     @pytest.mark.parametrize(
         ["hours", "expected_duration"],
@@ -319,3 +377,60 @@ class TestBookingResponse:
         response = models.BookingResponse(**kwargs)
         assert response.duration == expected_duration
         assert response.price == round(hours * PRICE_PER_HOUR, 2)
+
+    def test_can_serialize_historical_booking(self, models: ModuleType, valid_response: dict[str, Any]) -> None:
+        """A booking remains readable after its start time has passed."""
+        start = datetime.now(UTC) - timedelta(days=2)
+        model = models.BookingResponse(
+            **{
+                **valid_response,
+                "start_time": start,
+                "end_time": start + timedelta(hours=1),
+            }
+        )
+        assert model.duration == 60
+
+    def test_response_contains_exact_public_fields(self, models: ModuleType, valid_response: dict[str, Any]) -> None:
+        """The public response has a stable and documented field set."""
+        assert set(models.BookingResponse(**valid_response).model_dump(mode="json")) == {
+            "id",
+            "room_id",
+            "title",
+            "email",
+            "phone",
+            "start_time",
+            "end_time",
+            "notes",
+            "created_at",
+            "duration",
+            "price",
+        }
+
+    @pytest.mark.parametrize(
+        ("seconds", "price"),
+        [
+            (900, 6.25),
+            (907.92, 6.31),  # Exactly 6.305: HALF_UP differs from rounding to even.
+            (900.719999, 6.25),
+            (900.72, 6.26),
+            (959.999999, 6.67),
+        ],
+    )
+    def test_price_uses_full_interval(
+        self, models: ModuleType, valid_response: dict[str, Any], seconds: float, price: float
+    ) -> None:
+        """Price uses seconds and microseconds, with halves rounded up independently of whole-minute duration."""
+        end = valid_response["start_time"] + timedelta(seconds=seconds)
+        model = models.BookingResponse(**{**valid_response, "end_time": end})
+        assert model.duration == 15
+        assert model.model_dump(mode="json")["price"] == price
+
+
+class TestProtectedBookingFields:
+    """Tests for fields clients cannot change through partial updates."""
+
+    @pytest.mark.parametrize("field", ["room_id", "internal_code", "id", "created_at"])
+    def test_update_rejects_protected_fields(self, models: ModuleType, field: str) -> None:
+        """Even valid-looking values cannot make a protected field editable."""
+        with pytest.raises(ValidationError):
+            models.BookingUpdateRequest(**{field: "824f2fde-0cfb-4354-83a8-181e7b372aa6"})
