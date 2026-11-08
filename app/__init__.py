@@ -1,1 +1,1 @@
-"""Practice starter package for Roombook."""
+"""Application package for Roombook."""

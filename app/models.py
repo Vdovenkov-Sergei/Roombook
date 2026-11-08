@@ -4,55 +4,59 @@ import re
 
 from pydantic import BaseModel, ConfigDict
 
-# TODO(1): E.164 phone regex: leading "+", then 8-15 digits, first digit non-zero.
+# TODO(1): E.164 phone regex: leading "+", then 8-15 ASCII digits, first digit non-zero.
 E164_PATTERN = re.compile(r"")
-
-# TODO(2): Reserved characters to reject in free-text fields, e.g. <>{}$`;\
-RESERVED_CHARS: set[str] = set()
 
 
 class BookingBase(BaseModel):
-    """Model for fields shared by every booking payload."""
+    """Fields shared by booking creation and representation."""
 
     model_config = ConfigDict(extra="forbid")
 
-    # TODO(3): Declare `title`, `email`, `phone`, `start_time`, `end_time`, `notes` (optional).
-    # TODO(3): Needs `EmailStr`, `Field`, `AwareDatetime` from pydantic.
+    # TODO(2): Declare `room_id`, `title`, `email`, `phone`, `start_time`, `end_time`, `notes`.
+    #          Use `UUID`, `EmailStr` and `AwareDatetime`; only notes may be omitted.
 
-    # TODO(4): `title` validator -- trim; reject empty/whitespace-only; reject reserved chars; max length TITLE_MAX_LENGTH.
-    # TODO(4): `phone` validator -- must match the E.164 pattern.
-    # TODO(4): `notes` validator -- trim; reject reserved chars; empty becomes None; max length NOTES_MAX_LENGTH.
-    # TODO(4): Needs `field_validator` from pydantic. Raise ValueError as "Field '<name>' <reason>."
-
-    # TODO(5): Reject a past `start_time`; require `end_time` >= `start_time` + MIN_BOOKING_MINUTES.
-    # TODO(5): Needs `model_validator` from pydantic.
+    # TODO(3): Validate/trim `title`; reject blanks and lengths > TITLE_MAX_LENGTH.
+    #          Validate `phone` using E164_PATTERN.
+    #          Trim `notes`, normalize empty to None, enforce NOTES_MAX_LENGTH.
+    #          Ordinary free-text punctuation is allowed.
+    #          Reuse this behavior in `BookingUpdateRequest` without duplication.
 
 
 class BookingCreateRequest(BookingBase):
-    """Model for creating a booking."""
+    """Client payload for creating a booking."""
 
-    # TODO(6): Add the sensitive `internal_code` field.
-    # TODO(6): Needs `Field` from pydantic.
+    # TODO(4): Add mandatory `internal_code` with at least one character.
+    #          Exclude it from repr and all public API responses.
+
+    # TODO(5): At model level, require future `start_time` and minimum duration.
+    #          The minimum duration is MIN_BOOKING_MINUTES.
 
 
 class BookingUpdateRequest(BaseModel):
-    """Model for editing a booking."""
+    """Client payload for a partial booking update."""
 
     model_config = ConfigDict(extra="forbid")
 
-    # TODO(7): Optional versions of every editable field; reuse the validators.
-    # TODO(7): Same length limits on `title` / `notes` as BookingBase.
-    # TODO(7): Same timezone-aware rule on `start_time` / `end_time`.
-    # TODO(7): Check the time window only when both times are present.
+    # TODO(6): Declare `title`, `email`, `phone`, `start_time`, `end_time`, `notes`.
+    #          Every field may be omitted; `room_id` and `internal_code` cannot be changed.
+    #          Explicit null must be rejected for `title`, `email`, `phone`,
+    #          `start_time` and `end_time`; `notes` = null is valid.
+
+    # TODO(7): Reuse `title`, `phone` and `notes` validators from creation.
+    #          If `start_time` is supplied, require it to be in the future.
+    #          Check minimum duration only if both boundaries are supplied.
+    #          A single-boundary update is checked after merging in repository.
 
 
-class BookingResponse(BaseModel):
-    """Model for the booking response."""
+class BookingResponse(BookingBase):
+    """Public representation of a stored booking."""
 
-    # TODO(8): Same fields as BookingBase, plus `id` and `created_at`.
+    # TODO(8): Add `id: UUID` and timezone-aware `created_at`.
+    #          Keep extra 'forbid'; do not pass private fields to the response model.
 
-    # TODO(9): `field_serializer` for phone that masks all but the last four digits in JSON output.
-    # TODO(9): Needs `field_serializer` from pydantic.
+    # TODO(9): Mask phone in JSON only; replace every character except the last four with *.
 
-    # TODO(10): Computed fields `duration` (in minutes) and `price`.
-    # TODO(10): Needs `computed_field` from pydantic.
+    # TODO(10): Provide computed `duration` (whole minutes) and numeric `price`.
+    #           Price uses PRICE_PER_HOUR and the full interval, including microseconds.
+    #           Round to two decimal places, rounding exact halves up.

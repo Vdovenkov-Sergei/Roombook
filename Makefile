@@ -2,7 +2,7 @@
 # Usage: make <command>
 # List all commands: make help
 
-.PHONY: help install format lint type-check security style test run pre-commit clean all
+.PHONY: help install format format-check lint type-check security style test run pre-commit clean all
 
 # Variables
 UV := uv
@@ -18,10 +18,13 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2}'
 
 install: ## Install dependencies via uv
-	$(UV) sync
+	$(UV) sync --locked
 
 format: ## Format code with ruff
 	$(UV) run ruff format .
+
+format-check: ## Check formatting without changing files
+	$(UV) run ruff format --check .
 
 lint: ## Check code with ruff
 	$(UV) run ruff check .
@@ -32,7 +35,7 @@ type-check: ## Check types with mypy
 security: ## Scan code for security issues with bandit
 	$(UV) run bandit -c pyproject.toml -r $(PACKAGE)
 
-style: format lint type-check security ## Run all style and quality checks
+style: format-check lint type-check security ## Run all style and quality checks
 
 test: ## Run the test suite (with coverage)
 	$(UV) run pytest --cov=$(PACKAGE) --cov-report=term-missing

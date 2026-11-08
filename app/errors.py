@@ -5,7 +5,35 @@ from typing import Any
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+class ErrorDetail(BaseModel):
+    """One error associated with a request field."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str
+    issue: str
+
+
+class ErrorPayload(BaseModel):
+    """Machine-readable error and its human-readable context."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: str
+    message: str
+    details: list[ErrorDetail]
+
+
+class ErrorResponse(BaseModel):
+    """Standard response shape for all client errors."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    error: ErrorPayload
 
 
 def build_error_body(error_type: str, message: str, details: list[dict[str, str]]) -> dict[str, Any]:
@@ -19,7 +47,7 @@ def build_error_body(error_type: str, message: str, details: list[dict[str, str]
     Returns:
         The envelope: {"error": {"type": ..., "message": ..., "details": ...}}.
     """
-    # TODO(11): Return the envelope described in README.md.
+    # TODO(11): Build the envelope: error → type, message, details (field, issue).
     raise NotImplementedError
 
 
@@ -33,7 +61,9 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
     Returns:
         A 422 response shaped like the envelope in README.md.
     """
-    # TODO(12): Build details and return the envelope.
+    # TODO(12): Return HTTP 422 with type "validation_error" and message
+    #           "One or more fields are invalid.". Details: field (e.g. "body.title")
+    #           and issue (validation message), without the original input values.
     raise NotImplementedError
 
 
@@ -47,5 +77,6 @@ async def handle_http_exception(request: Request, exc: StarletteHTTPException) -
     Returns:
         A response with the same status code, shaped like the envelope in README.md.
     """
-    # TODO(13): Return the envelope using information from exception.
+    # TODO(13): Return type "http_error", the exception detail as message and empty details.
+    #           Preserve the exception's status code and headers.
     raise NotImplementedError

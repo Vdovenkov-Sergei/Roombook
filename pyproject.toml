@@ -60,6 +60,9 @@ ignore = [
     "D213",  # Summary on the first line
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
