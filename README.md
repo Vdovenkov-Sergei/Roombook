@@ -141,8 +141,9 @@ make all     # clean, style, then test
 ```
 
 Tests are expected to fail on a fresh checkout. Tests and quality checks must
-pass once you finish every `# TODO`. Every push and pull request runs the same checks on GitHub Actions
-([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+pass once you finish every `# TODO`. GitHub Actions runs quality checks on pushes
+to `main`, and both quality checks and tests on pull requests targeting `main`
+([quality.yml](.github/workflows/quality.yml), [tests.yml](.github/workflows/tests.yml)).
 
 Run `make help` for the full command list. Install the git hooks once with
 `uv run pre-commit install`.
